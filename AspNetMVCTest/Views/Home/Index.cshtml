@@ -1,0 +1,239 @@
+﻿@using ApplicationCore.Filters.ToDo;
+@using ApplicationCore.Models;
+@using DAL.Enum;
+
+@model CreateTaskModelView;
+
+@{
+	ViewData["Title"] = "Home Page";
+
+}
+
+<div class="text-center">
+	<div>
+		@*форма создания задачи*@
+		<form asp-controller="Home" asp-action="Create">
+			<label asp-for=Title></label> <br />
+			<span asp-validation-for="Title"></span><br />
+			<input type="text" asp-for="Title" /><br />
+
+			<label asp-for=Description></label><br />
+			<span asp-validation-for="Description"></span><br />
+			<input type="text" asp-for="Description" /> <br />
+
+			<label asp-for=Priority></label><br />
+			<span asp-validation-for="Priority"></span><br />
+			<select asp-for=Priority asp-items="Html.GetEnumSelectList<Priority>()"></select><br />
+
+			<button type="submit">Создать</button>
+		</form>
+	</div>
+</div>
+
+
+<div>
+
+	<form>
+		<label>Название задачи</label>
+		<label>Приоритет задачи</label>
+		<br />
+
+		<input id="InputFilterTitle" type="text" />
+
+		<select id="InputFilterPriority" asp-items="Html.GetEnumSelectList<Priority>()">
+			<option value="">Любой</option>
+		</select>
+
+		<input id="InputFilterDate" type="date" />
+	</form>
+
+</div>
+
+<br />
+<br />
+
+<table class="table table-hover table-dark" id="DataTable">
+	<thead>
+		<tr>
+			<th>Название</th>
+			<th>Описание</th>
+			<th>Дата создания</th>
+			<th>Приоритет</th>
+			<th>Готовность</th>
+			<th>Завершить</th>
+			<th>Редактировать</th>
+			<th>Удалить</th>
+		</tr>
+	</thead>
+
+	<tbody>
+	</tbody>
+</table>
+
+
+@section scripts{
+	<partial name="_ValidationScriptsPartial" />
+	<script type="text/javascript" src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+	<script>
+
+		var today = getTodayDate();
+		document.getElementById("InputFilterDate").setAttribute("value", today);
+		document.getElementById("InputFilterDate").setAttribute("max", today);
+
+		$.ajax({
+			url: "@Url.Action("GetMinDate")",
+			method: "Get",
+			data: null,
+			success: function (response) {
+				document.getElementById("InputFilterDate").setAttribute("min", response.minDate);
+			},
+		});
+
+		let dataTable = $('#DataTable').DataTable(
+			{
+				info: true,
+				serverSide: true,
+				searching: false,
+				paging: false,
+				sorting: false,
+
+				"language": {
+					"zeroRecords": "По выбранным фильтрам не найдено ни одной записи",
+				},
+
+				ajax: {
+					url: "@Url.Action("GetAllToDo")",
+					method: "POST",
+					data: model,
+				},
+				columns: [
+					{ data: "title" },
+					{ data: 'description' },
+					{ data: 'created' },
+					{ data: 'priority' },
+					{ data: 'isCompleted' },
+					{
+						data: null,
+						render: function (data, type) {
+							if (data.isCompleted == "готова") {
+								return null;
+							}
+							else {
+								return '<button class = "btn btn-success center-block btn-complete"> Завершить </button>'
+							}
+						}
+					},
+					{
+						data: null,
+						render: function (data, type) {
+							if (data.isCompleted == "готова") {
+								return null;
+							}
+							else {
+								return '<button class = "btn btn-success center-block btn-edit"> Редактировать </button>'
+							}
+						}
+					},
+					{
+						data: null,
+						render: function (data, type) {							
+								return '<button class = "btn btn-success center-block btn-delete"> Удалить </button>'							
+						}
+					},
+				],
+
+				createdRow: function (nRow, data) {
+
+					var handlerComplete = function () {
+						$.ajax({
+							url: "@Url.Action("EndToDo")",
+							method: "POST",
+							data: { id: data.id },
+							success: function () {
+								dataTable.draw();
+							},
+							error: function () {
+								window.alert("Something went wrong, please try again or wait a sometime.");
+							}
+						});
+					}
+
+					var handlerEdit = function () {
+						$.ajax({
+							url: "@Url.Action("EndToDo")",
+							method: "POST",
+							data: { id: data.id },
+							success: function () {
+								dataTable.draw();
+							},
+							error: function () {
+								window.alert("Something went wrong, please try again or wait a sometime.");
+							}
+						});
+					}
+
+					var handlerDelete = function () {
+						$.ajax({
+							url: "@Url.Action("Delete")",
+							method: "POST",
+							data: { id: data.id },
+							success: function () {
+								dataTable.draw();
+							},
+							error: function () {
+								window.alert("Something went wrong, please try again or wait a sometime.");
+							}
+						});
+					}
+
+
+					$('.btn-complete', nRow).on('click', handlerComplete);
+					$('.btn-edit', nRow).on('click', handlerEdit);
+					$('.btn-delete', nRow).on('click', handlerDelete);
+				}
+			});
+
+
+
+		function getTodayDate() {
+			var today = new Date();
+			var dd = String(today.getDate()).padStart(2, '0');
+			var mm = String(today.getMonth() + 1).padStart(2, '0');
+			var yyyy = today.getFullYear();
+			today = yyyy + '-' + mm + '-' + dd;
+			return today;
+		}
+
+		function model() {
+			return {
+				Title: $("#InputFilterTitle").val(),
+				Priority: $("#InputFilterPriority option:selected").val(),
+				DateTime: $("#InputFilterDate ").val()
+			}
+		};
+		$("#InputFilterTitle").on('change', function () {
+			dataTable.draw();
+		});
+		$("#InputFilterDate").on('change', function () {
+			dataTable.draw();
+		});
+
+		$("#InputFilterPriority").on('change', function () {
+			dataTable.draw();
+		});
+	</script>
+
+	@*<script>
+		function SetDateValues(response) {
+			$.ajax({
+				url: "@Url.Action("GetMinDate")",
+				method: "Get",
+				data: null,
+				success: function (response) {
+					$("#InputFilterDate").min = response.mindate
+				},
+			});
+		};
+	</script>*@
+}
