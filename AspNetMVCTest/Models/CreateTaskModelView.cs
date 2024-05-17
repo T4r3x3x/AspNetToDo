@@ -1,11 +1,12 @@
 ﻿using DAL.Enum;
+
 using System.ComponentModel.DataAnnotations;
 
 namespace Representation.Models
 {
     public class CreateTaskModelView
     {
-        [Required(ErrorMessage ="Введите название задачи")]
+        [Required(ErrorMessage = "Введите название задачи")]
         [Display(Name = "Название задачи")]
         public string Title { get; set; }
 
